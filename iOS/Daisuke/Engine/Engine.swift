@@ -151,6 +151,11 @@ extension DaisukeEngine {
             await actor.deleteRunner(id)
         }
     }
+    
+    func invalidateRunner(_ id: String) {
+        Logger.shared.log("Invalidating runner: \(id)")
+        runners.removeValue(forKey: id)
+    }
 }
 
 // MARK: - Import

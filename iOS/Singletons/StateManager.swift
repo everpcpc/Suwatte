@@ -211,11 +211,24 @@ extension StateManager {
             }
         }
 
-        collectionToken = await actor.observeLibraryCollection { value in
+        collectionToken = await actor.observeLibraryCollection { [weak self] value in
             Task { @MainActor in
-                withAnimation { [weak self] in
-                    self?.collections = value
-                    self?.collectionInitialized = true
+                guard let self = self else { return }
+                // Check if this is the first load or data actually changed
+                let isFirstLoad = !self.collectionInitialized
+                let countChanged = self.collections.count != value.count
+                let idsChanged = self.collections.map(\.id) != value.map(\.id)
+                
+                if isFirstLoad || countChanged || idsChanged {
+                    // Animate real changes
+                    withAnimation {
+                        self.collections = value
+                        self.collectionInitialized = true
+                    }
+                } else {
+                    // Silently update without animation when app resumes (data unchanged)
+                    self.collections = value
+                    self.collectionInitialized = true
                 }
             }
         }

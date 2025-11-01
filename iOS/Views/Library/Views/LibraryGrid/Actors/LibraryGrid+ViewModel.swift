@@ -31,8 +31,9 @@ extension LibraryView.LibraryGrid {
         @Published var selectedRegularIndexes: Set<Int> = []
         @Published var navSelection: LibraryEntry?
         @Published var query = ""
-        @Published var regularLibrary: [LibraryEntry]?
-        @Published var pinnedLibrary: [LibraryEntry]?
+        // Initialize to empty arrays instead of nil to avoid showing ProgressView on view recreation
+        @Published var regularLibrary: [LibraryEntry]? = []
+        @Published var pinnedLibrary: [LibraryEntry]? = []
         private var regularLibraryToken: NotificationToken?
         private var pinnedLibraryToken: NotificationToken?
         private var didSet = false
@@ -58,6 +59,8 @@ extension LibraryView.LibraryGrid {
         }
 
         func isLibraryStillLoading() -> Bool {
+            // Only show loading if data hasn't been initialized yet
+            // Empty arrays are considered loaded (just empty library)
             regularLibrary == nil || pinnedLibrary == nil
         }
 

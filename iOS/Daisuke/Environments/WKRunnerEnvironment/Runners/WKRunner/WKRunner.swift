@@ -46,6 +46,7 @@ public class WKRunner: DSKRunner {
 
     func setBootstrapper(_ bootstrapper: WKBootstrapper) {
         self.bootstrapper = bootstrapper
+        bootstrapper.runner = self
     }
 
     func handleURL(url: String) async throws -> DSKCommon.DeepLinkContext? {
@@ -59,6 +60,7 @@ class WKBootstrapper: NSObject {
     var isClientReady = false
     fileprivate var continuation: CheckedContinuation<Void, Never>?
     private var hasSetupDelegate = false
+    weak var runner: WKRunner?
 
     init(wv: WKWebView) {
         self.wv = wv
@@ -93,16 +95,6 @@ class WKBootstrapper: NSObject {
             wv?.loadHTMLString(HTML, baseURL: nil)
         }
     }
-
-    @MainActor
-    func reload() async {
-        isClientReady = false
-        wv?.configuration.userContentController.add(self, contentWorld: .defaultClient, name: "state")
-        await withCheckedContinuation { continuation in
-            self.continuation = continuation
-            wv?.loadHTMLString(HTML, baseURL: nil)
-        }
-    }
 }
 
 extension WKBootstrapper: WKScriptMessageHandler {
@@ -128,9 +120,15 @@ extension WKBootstrapper: WKScriptMessageHandler {
 extension WKBootstrapper: WKNavigationDelegate {
     @MainActor
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        Logger.shared.log("WKWebView process terminated, reloading...")
-        Task {
-            await reload()
+        Logger.shared.log("WKWebView process terminated, invalidating runner...")
+        // Mark the runner as invalid so it will be recreated on next access
+        isClientReady = false
+        
+        // Remove the runner from DSK cache to force recreation
+        if let runner = runner {
+            Task {
+                await DSK.shared.invalidateRunner(runner.id)
+            }
         }
     }
 }
